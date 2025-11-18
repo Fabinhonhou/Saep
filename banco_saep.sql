@@ -8,9 +8,14 @@ CREATE TABLE usuarios (
     senha VARCHAR(100)
 );
 
+-- TABELA ADAPTADA PARA FERRAMENTAS
 CREATE TABLE produtos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100),
+    tipo VARCHAR(50),          -- Ex: Martelo, Chave, Furadeira
+    material_cabo VARCHAR(50), -- Ex: Madeira, Tubular, Emborrachado
+    tamanho VARCHAR(50),       -- Ex: 16 oz, 10mm
+    tensao VARCHAR(20),        -- Ex: 110v, 220v, N/A
     preco DECIMAL(10,2),
     quantidade INT
 );
@@ -18,24 +23,16 @@ CREATE TABLE produtos (
 CREATE TABLE movimentacoes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     produto_id INT,
-    tipo VARCHAR(10), -- 'entrada' ou 'saida'
+    tipo VARCHAR(10),
     quantidade INT,
     data_movimentacao DATETIME,
     FOREIGN KEY (produto_id) REFERENCES produtos(id)
 );
 
--- População (Item 3.2)
-INSERT INTO usuarios (nome, email, senha) VALUES 
-('Admin', 'admin@saep.com', '1234'),
-('Gerente', 'gerente@saep.com', '1234'),
-('Funcionario', 'user@saep.com', '1234');
+-- POPULAÇÃO (Exemplo do seu martelo)
+INSERT INTO usuarios (nome, email, senha) VALUES ('Admin', 'admin@saep.com', '1234');
 
-INSERT INTO produtos (nome, preco, quantidade) VALUES 
-('Teclado USB', 50.00, 100),
-('Mouse Óptico', 25.00, 50),
-('Monitor 24pol', 800.00, 10);
-
-INSERT INTO movimentacoes (produto_id, tipo, quantidade, data_movimentacao) VALUES 
-(1, 'entrada', 10, NOW()),
-(2, 'saida', 5, NOW()),
-(1, 'saida', 2, NOW());
+INSERT INTO produtos (nome, tipo, material_cabo, tamanho, tensao, preco, quantidade) VALUES 
+('Martelo de Unha MASTER Perfil Reto', 'Martelo', 'Tubular', '16 oz', 'N/A', 45.90, 20),
+('Chave Phillips', 'Chave Manual', 'Plástico', '1/4 x 6', 'N/A', 12.50, 50),
+('Furadeira de Impacto Bosch', 'Elétrica', 'Emborrachado', '1/2 pol', '220v', 350.00, 5);

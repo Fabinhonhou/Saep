@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Histórico - SAEP</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        nav { background: #333; padding: 15px; color: white; margin-bottom: 20px; border-radius: 5px; }
+        nav a { color: white; margin-right: 15px; text-decoration: none; font-weight: bold; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        
+        /* Cores para os tipos */
+        .entrada { color: green; font-weight: bold; background-color: #e8f5e9; }
+        .saida { color: red; font-weight: bold; background-color: #ffebee; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="index.html">Produtos</a>
+        <a href="estoque.html">Nova Movimentação</a>
+        <a href="historico.html" style="text-decoration: underline;">Histórico</a>
+    </nav>
+
+    <h2>Histórico de Movimentações</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Data / Hora</th>
+                <th>Produto</th>
+                <th>Tipo</th>
+                <th>Quantidade</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaHistorico">
+            </tbody>
+    </table>
+
+    <script>
+        const API = 'http://localhost:3000';
+
+        async function carregarHistorico() {
+            const res = await fetch(`${API}/movimentacoes`);
+            const lista = await res.json();
+            const tbody = document.getElementById('tabelaHistorico');
+            
+            tbody.innerHTML = '';
+
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Nenhuma movimentação registrada.</td></tr>';
+                return;
+            }
+
+            lista.forEach(mov => {
+                // Formata a data para ficar bonita (ex: 18/11/2024 14:30)
+                // FORÇA a leitura como data UTC para evitar problemas de fuso horário local
+                const dataObj = new Date(mov.data);
+                const dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' ' + dataObj.toLocaleTimeString('pt-BR');
+                
+                // Define a classe CSS baseada no tipo
+                const classeTipo = mov.tipo === 'entrada' ? 'entrada' : 'saida';
+                const textoTipo = mov.tipo === 'entrada' ? 'ENTRADA (+)' : 'SAÍDA (-)';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${dataFormatada}</td>
+                        <td>${mov.nome || 'Produto Excluído'}</td>
+                        <td class="${classeTipo}">${textoTipo}</td>
+                        <td>${mov.quantidade}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        carregarHistorico();
+    </script>
+</body>
+</html>

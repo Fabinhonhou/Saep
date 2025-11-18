@@ -15,8 +15,11 @@
 </head>
 <body>
     <nav>
-        <a href="index.html">Voltar para Produtos</a>
-        <span>Gestão de Estoque</span>
+    <div style="display: inline-block;">
+        <a href="index.html">Produtos</a>
+        <a href="estoque.html">Nova Movimentação</a>
+        <a href="historico.html">Histórico</a>
+    </div>
     </nav>
 
     <div class="card">
@@ -77,21 +80,29 @@
         async function registrarMovimentacao() {
             const produto_id = document.getElementById('selProduto').value;
             const tipo = document.getElementById('selTipo').value;
-            const quantidade = document.getElementById('qtdMov').value;
+            const quantidade = parseInt(document.getElementById('qtdMov').value);
 
-            if(!quantidade) return alert("Informe a quantidade");
+            if(!quantidade || quantidade <= 0) return alert("Informe uma quantidade válida e positiva!");
 
-            await fetch(`${API}/movimentacoes`, {
+            const res = await fetch(`${API}/movimentacoes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ produto_id, tipo, quantidade })
             });
 
-            alert("Movimentação registrada!");
+            // NOVO TRATAMENTO DE ERRO
+            if (res.status === 400) {
+                const erro = await res.json();
+                alert(`ERRO: ${erro.mensagem}`); // Mostra a mensagem do servidor
+                return;
+            } else if (!res.ok) {
+                 alert("Erro desconhecido ao registrar movimentação.");
+                 return;
+            }
+            
+            alert("Movimentação registrada com sucesso!");
             init(); // Recarrega a tela
         }
-
-        init();
     </script>
 </body>
 </html>

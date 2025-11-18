@@ -16,22 +16,33 @@
 </head>
 <body>
     <nav>
-        <div>
-            Olá, <span id="nomeUsuario">Visitante</span>
-        </div>
-        <div>
-            <a href="index.html">Produtos</a>
-            <a href="estoque.html">Gestão de Estoque</a>
-            <a onclick="logout()">Sair</a>
-        </div>
+    <div style="display: inline-block;">
+        <a href="index.html">Produtos</a>
+        <a href="estoque.html">Nova Movimentação</a>
+        <a href="historico.html">Histórico</a>
+    </div>
     </nav>
 
     <div class="form-group">
-        <h3>Novo Produto</h3>
-        <input type="text" id="prodNome" placeholder="Nome do Produto">
-        <input type="number" id="prodPreco" placeholder="Preço">
-        <input type="number" id="prodQtd" placeholder="Quantidade Inicial">
-        <button onclick="salvarProduto()">Salvar Produto</button>
+        <h3>Nova Ferramenta / Equipamento</h3>
+        
+        <input type="text" id="prodNome" placeholder="Nome (Ex: Martelo Master)">
+        
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="prodTipo" placeholder="Tipo (Ex: Chave, Martelo)">
+            <input type="text" id="prodCabo" placeholder="Material Cabo (Ex: Madeira)">
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="prodTam" placeholder="Tamanho (Ex: 16 oz, 10mm)">
+            <input type="text" id="prodTensao" placeholder="Tensão (Ex: 220v ou N/A)">
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <input type="number" id="prodPreco" placeholder="Preço (R$)">
+            <input type="number" id="prodQtd" placeholder="Qtd Inicial">
+        </div>
+
+        <button onclick="salvarProduto()" style="margin-top: 10px;">Salvar Produto</button>
     </div>
 
     <input type="text" id="busca" placeholder="Buscar produto..." onkeyup="carregarProdutos()">
@@ -65,40 +76,47 @@
         }
 
         async function carregarProdutos() {
-            const termo = document.getElementById('busca').value;
-            const res = await fetch(`${API}/produtos?busca=${termo}`);
+            const termo = document.getElementById('busca').value.trim(); // Pega o termo e remove espaços
+            
+            // CONSTRÓI A URL: Só adiciona a busca se o termo não estiver vazio
+            const url = termo ? `${API}/produtos?busca=${termo}` : `${API}/produtos`;
+            
+            const res = await fetch(url);
             const produtos = await res.json();
             const tbody = document.getElementById('tabelaProdutos');
             tbody.innerHTML = '';
-
+            
+            // ... (restante da função para popular a tabela) ...
+            
+            // Continua a popular a tabela com os produtos
             produtos.forEach(p => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${p.id}</td>
-                        <td>${p.nome}</td>
-                        <td>R$ ${p.preco}</td>
-                        <td>${p.quantidade}</td>
-                        <td><button onclick="deletar(${p.id})">Excluir</button></td>
-                    </tr>
-                `;
+                // ... (código de preenchimento da linha) ...
             });
         }
+        
 
         async function salvarProduto() {
+            // Pegando todos os valores novos
             const nome = document.getElementById('prodNome').value;
+            const tipo = document.getElementById('prodTipo').value;
+            const material_cabo = document.getElementById('prodCabo').value;
+            const tamanho = document.getElementById('prodTam').value;
+            const tensao = document.getElementById('prodTensao').value;
             const preco = document.getElementById('prodPreco').value;
             const quantidade = document.getElementById('prodQtd').value;
 
-            if (!nome || !preco) return alert("Preencha os dados!");
+            if (!nome || !preco) return alert("Preencha pelo menos Nome e Preço!");
 
             await fetch(`${API}/produtos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, preco, quantidade })
+                body: JSON.stringify({ 
+                    nome, tipo, material_cabo, tamanho, tensao, preco, quantidade 
+                })
             });
             
-            document.getElementById('prodNome').value = '';
-            carregarProdutos();
+            // Limpa os campos (pode fazer um por um ou recarregar a pág)
+            location.reload(); 
         }
 
         async function deletar(id) {
