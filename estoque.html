@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Estoque - SAEP</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        nav { background: #333; padding: 15px; color: white; margin-bottom: 20px; }
+        nav a { color: white; margin-right: 15px; text-decoration: none; }
+        .baixo-estoque { background-color: #ffcccc; color: red; font-weight: bold; } /* Item 7.1.4 Visual */
+        .card { background: #f9f9f9; padding: 20px; margin-bottom: 20px; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html">Voltar para Produtos</a>
+        <span>Gestão de Estoque</span>
+    </nav>
+
+    <div class="card">
+        <h3>Registrar Movimentação</h3>
+        <select id="selProduto"></select>
+        <select id="selTipo">
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+        </select>
+        <input type="number" id="qtdMov" placeholder="Quantidade" min="1">
+        <input type="date" id="dataMov">
+        <button onclick="registrarMovimentacao()">Registrar</button>
+    </div>
+
+    <h3>Status do Estoque</h3>
+    <table>
+        <thead><tr><th>Produto</th><th>Qtd Atual</th><th>Status</th></tr></thead>
+        <tbody id="tabelaEstoque"></tbody>
+    </table>
+
+    <script>
+        const API = 'http://localhost:3000';
+
+        async function init() {
+            // Carrega produtos para o Select e para a Tabela
+            const res = await fetch(`${API}/produtos`);
+            const produtos = await res.json();
+            
+            // Ordena alfabético (Item 7.1.1)
+            produtos.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            const select = document.getElementById('selProduto');
+            const tbody = document.getElementById('tabelaEstoque');
+            
+            select.innerHTML = '';
+            tbody.innerHTML = '';
+
+            produtos.forEach(p => {
+                // Preenche Select
+                select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                
+                // Verifica Estoque Mínimo (Ex: 5 unidades) - Item 7.1.4
+                const estoqueBaixo = p.quantidade < 5;
+                const classe = estoqueBaixo ? 'class="baixo-estoque"' : '';
+                const status = estoqueBaixo ? 'ABAIXO DO MÍNIMO' : 'OK';
+
+                // Preenche Tabela
+                tbody.innerHTML += `
+                    <tr ${classe}>
+                        <td>${p.nome}</td>
+                        <td>${p.quantidade}</td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function registrarMovimentacao() {
+            const produto_id = document.getElementById('selProduto').value;
+            const tipo = document.getElementById('selTipo').value;
+            const quantidade = document.getElementById('qtdMov').value;
+
+            if(!quantidade) return alert("Informe a quantidade");
+
+            await fetch(`${API}/movimentacoes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ produto_id, tipo, quantidade })
+            });
+
+            alert("Movimentação registrada!");
+            init(); // Recarrega a tela
+        }
+
+        init();
+    </script>
+</body>
+</html>

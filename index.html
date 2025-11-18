@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Produtos</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        nav { background: #333; padding: 15px; color: white; display: flex; justify-content: space-between; margin-bottom: 20px; }
+        nav a { color: white; margin-left: 15px; text-decoration: none; font-weight: bold; cursor: pointer; }
+        .table-container { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .form-group { margin-bottom: 15px; background: #eee; padding: 15px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div>
+            Olá, <span id="nomeUsuario">Visitante</span>
+        </div>
+        <div>
+            <a href="index.html">Produtos</a>
+            <a href="estoque.html">Gestão de Estoque</a>
+            <a onclick="logout()">Sair</a>
+        </div>
+    </nav>
+
+    <div class="form-group">
+        <h3>Novo Produto</h3>
+        <input type="text" id="prodNome" placeholder="Nome do Produto">
+        <input type="number" id="prodPreco" placeholder="Preço">
+        <input type="number" id="prodQtd" placeholder="Quantidade Inicial">
+        <button onclick="salvarProduto()">Salvar Produto</button>
+    </div>
+
+    <input type="text" id="busca" placeholder="Buscar produto..." onkeyup="carregarProdutos()">
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Preço</th>
+                    <th>Qtd</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaProdutos"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3000';
+        
+        // Verifica Login
+        const user = JSON.parse(localStorage.getItem('usuario'));
+        if (!user) window.location.href = 'login.html';
+        document.getElementById('nomeUsuario').innerText = user.nome;
+
+        function logout() {
+            localStorage.removeItem('usuario');
+            window.location.href = 'login.html';
+        }
+
+        async function carregarProdutos() {
+            const termo = document.getElementById('busca').value;
+            const res = await fetch(`${API}/produtos?busca=${termo}`);
+            const produtos = await res.json();
+            const tbody = document.getElementById('tabelaProdutos');
+            tbody.innerHTML = '';
+
+            produtos.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.nome}</td>
+                        <td>R$ ${p.preco}</td>
+                        <td>${p.quantidade}</td>
+                        <td><button onclick="deletar(${p.id})">Excluir</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function salvarProduto() {
+            const nome = document.getElementById('prodNome').value;
+            const preco = document.getElementById('prodPreco').value;
+            const quantidade = document.getElementById('prodQtd').value;
+
+            if (!nome || !preco) return alert("Preencha os dados!");
+
+            await fetch(`${API}/produtos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, preco, quantidade })
+            });
+            
+            document.getElementById('prodNome').value = '';
+            carregarProdutos();
+        }
+
+        async function deletar(id) {
+            if(confirm('Confirmar exclusão?')) {
+                await fetch(`${API}/produtos/${id}`, { method: 'DELETE' });
+                carregarProdutos();
+            }
+        }
+
+        carregarProdutos();
+    </script>
+</body>
+</html>
