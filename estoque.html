@@ -6,7 +6,7 @@
     <style>
         body { font-family: sans-serif; padding: 20px; }
         nav { background: #333; padding: 15px; color: white; margin-bottom: 20px; }
-        nav a { color: white; margin-right: 15px; text-decoration: none; }
+        nav a { color: white; margin-right: 15px; text-decoration: none; font-weight: bold; }
         .baixo-estoque { background-color: #ffcccc; color: red; font-weight: bold; } /* Item 7.1.4 Visual */
         .card { background: #f9f9f9; padding: 20px; margin-bottom: 20px; border: 1px solid #ddd; }
         table { width: 100%; border-collapse: collapse; }
@@ -17,22 +17,26 @@
     <nav>
     <div style="display: inline-block;">
         <a href="index.html">Produtos</a>
-        <a href="estoque.html">Nova Movimentação</a>
+        <a href="estoque.html" style="text-decoration: underline;">Nova Movimentação</a>
         <a href="historico.html">Histórico</a>
     </div>
+    <button onclick="logout()" style="padding: 5px 10px; cursor: pointer;">
+        Sair 🚪
+    </button>
     </nav>
 
-    <div class="card">
-        <h3>Registrar Movimentação</h3>
-        <select id="selProduto"></select>
-        <select id="selTipo">
-            <option value="entrada">Entrada</option>
-            <option value="saida">Saída</option>
-        </select>
-        <input type="number" id="qtdMov" placeholder="Quantidade" min="1">
-        <input type="date" id="dataMov">
-        <button onclick="registrarMovimentacao()">Registrar</button>
-    </div>
+    <div style="margin-top: 15px;">
+    <select id="selProduto" style="padding: 10px;"></select>
+    <select id="selTipo" style="padding: 10px;">
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+    </select>
+    <input type="number" id="qtdMov" placeholder="Quantidade" style="padding: 10px; width: 120px;">
+    
+    <input type="date" id="dataMov" style="padding: 10px;"> 
+    
+    <button onclick="registrarMovimentacao()" style="padding: 10px;">Registrar</button>
+</div>
 
     <h3>Status do Estoque</h3>
     <table>
@@ -44,29 +48,34 @@
         const API = 'http://localhost:3000';
 
         async function init() {
-            // Carrega produtos para o Select e para a Tabela
+            // A mesma rota que funciona na página de Produtos
             const res = await fetch(`${API}/produtos`);
             const produtos = await res.json();
             
-            // Ordena alfabético (Item 7.1.1)
+            // Ordena alfabético
             produtos.sort((a, b) => a.nome.localeCompare(b.nome));
 
-            const select = document.getElementById('selProduto');
-            const tbody = document.getElementById('tabelaEstoque');
+            // IDs CRÍTICOS
+            const select = document.getElementById('selProduto'); // O dropdown de produtos
+            const tbody = document.getElementById('tabelaEstoque'); // A tabela de status
             
             select.innerHTML = '';
             tbody.innerHTML = '';
 
+            if (produtos.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="3">Nenhum produto em estoque.</td></tr>';
+                 return;
+            }
+
             produtos.forEach(p => {
-                // Preenche Select
-                select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                // 1. Preenche o Select
+                select.innerHTML += `<option value="${p.id}">${p.nome}</option>`; 
                 
-                // Verifica Estoque Mínimo (Ex: 5 unidades) - Item 7.1.4
+                // 2. Preenche a Tabela de Status
                 const estoqueBaixo = p.quantidade < 5;
                 const classe = estoqueBaixo ? 'class="baixo-estoque"' : '';
                 const status = estoqueBaixo ? 'ABAIXO DO MÍNIMO' : 'OK';
 
-                // Preenche Tabela
                 tbody.innerHTML += `
                     <tr ${classe}>
                         <td>${p.nome}</td>
@@ -81,19 +90,27 @@
             const produto_id = document.getElementById('selProduto').value;
             const tipo = document.getElementById('selTipo').value;
             const quantidade = parseInt(document.getElementById('qtdMov').value);
+            const data_mov = document.getElementById('dataMov').value; // <-- CAPTURA A DATA
 
             if(!quantidade || quantidade <= 0) return alert("Informe uma quantidade válida e positiva!");
+            if(!data_mov) return alert("Por favor, informe a data da movimentação."); // <-- NOVA VALIDAÇÃO
 
             const res = await fetch(`${API}/movimentacoes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ produto_id, tipo, quantidade })
+                body: JSON.stringify({ 
+                    produto_id, 
+                    tipo, 
+                    quantidade,
+                    data_mov // <-- ENVIANDO A DATA DO USUÁRIO
+                })
             });
+            
+            // ... (restante do código de erro 400 e sucesso) ...
 
-            // NOVO TRATAMENTO DE ERRO
             if (res.status === 400) {
                 const erro = await res.json();
-                alert(`ERRO: ${erro.mensagem}`); // Mostra a mensagem do servidor
+                alert(`ERRO: ${erro.mensagem}`);
                 return;
             } else if (!res.ok) {
                  alert("Erro desconhecido ao registrar movimentação.");
@@ -103,6 +120,20 @@
             alert("Movimentação registrada com sucesso!");
             init(); // Recarrega a tela
         }
+
+        // Adicione esta função dentro do seu bloco <script>
+
+function logout() {
+    // 1. Limpa o token/usuário salvo
+    localStorage.removeItem('usuario');
+    
+    // 2. Redireciona para a página de login
+    window.location.href = 'login.html';
+}
+
+// ... (O restante do seu script, como carregarProdutos(), etc.) ...
+
+        init();
     </script>
 </body>
 </html>

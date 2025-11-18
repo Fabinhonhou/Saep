@@ -38,7 +38,7 @@ db.serialize(() => {
             console.log("-> USUÁRIO ADMIN PADRÃO CRIADO: admin@saep.com / 1234");
         }
     });
-    
+
     db.get("SELECT COUNT(*) AS count FROM produtos", (err, row) => {
         if (row && row.count === 0) {
             db.run(`INSERT INTO produtos (nome, tipo, material_cabo, tamanho, tensao, preco, quantidade) VALUES 
@@ -65,16 +65,20 @@ app.post('/login', (req, res) => {
 // --- CRUD PRODUTOS (Item 6) ---
 // --- CORREÇÃO: Rota GET PRODUTOS (para listar tudo sem busca) ---
 // --- Rota GET PRODUTOS (Mais Robusta) ---
+// --- Rota GET PRODUTOS (COM TRATAMENTO DE BUSCA E ID) ---
 app.get('/produtos', (req, res) => {
-    // Tratando a busca vazia: se não houver busca, ou a busca for uma string vazia,
-    // garantimos que o filtro não seja aplicado.
     const termoBusca = req.query.busca ? req.query.busca.trim() : '';
-    
     let sql = "SELECT * FROM produtos";
     let params = [];
-
-    // O filtro só é adicionado se o termoBusca tiver algum conteúdo real
-    if (termoBusca) {
+    
+    // NOVO CÓDIGO: Verifica se o termo de busca é um número (provavelmente um ID)
+    if (!isNaN(termoBusca) && termoBusca.length > 0) {
+        // Se for um número, assume que é o ID e busca exatamente por ele
+        sql += " WHERE id = ?";
+        params.push(termoBusca);
+    } 
+    // SE NÃO FOR NÚMERO, usa a busca LIKE normal ou retorna tudo
+    else if (termoBusca) { 
         sql += " WHERE nome LIKE ?";
         params.push(`%${termoBusca}%`);
     }
@@ -83,7 +87,6 @@ app.get('/produtos', (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        // console.log(`Busca SQL: ${sql} | Params: ${params}`); // Use para debug
         res.json(rows);
     });
 });
@@ -101,28 +104,51 @@ app.post('/produtos', (req, res) => {
     });
 });
 
-app.put('/produtos/:id', (req, res) => {
-    const { nome, preco } = req.body;
-    db.run("UPDATE produtos SET nome = ?, preco = ? WHERE id = ?", [nome, preco, req.params.id], (err) => res.json({ sucesso: true }));
+// --- ROTA DE EDIÇÃO (PUT) ---
+app.put('/produtos', (req, res) => {
+    // Note que agora estamos recebendo o ID
+    const { id, nome, tipo, material_cabo, tamanho, tensao, preco, quantidade } = req.body;
+    
+    if (!id || !nome || !preco || quantidade === undefined) {
+        return res.status(400).json({ mensagem: "Dados insuficientes para atualização." });
+    }
+
+    const sql = `
+        UPDATE produtos 
+        SET nome = ?, tipo = ?, material_cabo = ?, tamanho = ?, tensao = ?, preco = ?, quantidade = ?
+        WHERE id = ?
+    `;
+    
+    const params = [nome, tipo, material_cabo, tamanho, tensao, preco, quantidade, id];
+
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json(err);
+        if (this.changes === 0) return res.status(404).json({ mensagem: "Produto não encontrado." });
+        
+        res.json({ mensagem: "Produto atualizado com sucesso!", id });
+    });
 });
 
 app.delete('/produtos/:id', (req, res) => {
     db.run("DELETE FROM produtos WHERE id = ?", [req.params.id], (err) => res.json({ sucesso: true }));
 });
 
-// --- GESTÃO DE ESTOQUE (Item 7 - AGORA COM VALIDAÇÃO) ---
+// --- GESTÃO DE ESTOQUE (AGORA USANDO A DATA DO USUÁRIO) ---
 app.post('/movimentacoes', (req, res) => {
-    const { produto_id, tipo, quantidade } = req.body;
-    const data = new Date().toISOString();
+    // 1. RECEBE A DATA DO USUÁRIO JUNTO COM OS OUTROS CAMPOS
+    const { produto_id, tipo, quantidade, data_mov } = req.body; 
+    
+    // Junta a data fornecida (AAAA-MM-DD) com um horário (12:00:00) e converte para ISO.
+    // Isso garante o formato correto para o banco.
+    let dataParaSalvar = new Date(data_mov + 'T12:00:00.000Z').toISOString();
 
-    // 1. VERIFICAÇÃO INICIAL (SE FOR SAÍDA)
+    // 2. VERIFICAÇÃO INICIAL (SE FOR SAÍDA)
     if (tipo === 'saida') {
         db.get("SELECT quantidade FROM produtos WHERE id = ?", [produto_id], (err, row) => {
             if (err) return res.status(500).json({ mensagem: "Erro ao consultar estoque." });
             
             const estoqueAtual = row ? row.quantidade : 0;
             
-            // VALIDAÇÃO CRÍTICA (Item solicitado)
             if (quantidade > estoqueAtual) {
                 return res.status(400).json({ 
                     sucesso: false, 
@@ -131,11 +157,11 @@ app.post('/movimentacoes', (req, res) => {
             }
 
             // Se for válida, prossegue com as transações aninhadas:
-            executarMovimentacao(produto_id, tipo, quantidade, data, res);
+            executarMovimentacao(produto_id, tipo, quantidade, dataParaSalvar, res);
         });
     } else {
-        // Se for ENTRADA, não precisa checar o estoque, apenas prossegue:
-        executarMovimentacao(produto_id, tipo, quantidade, data, res);
+        // Se for ENTRADA, prossegue:
+        executarMovimentacao(produto_id, tipo, quantidade, dataParaSalvar, res);
     }
 });
 

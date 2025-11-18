@@ -6,7 +6,7 @@
     <style>
         body { font-family: sans-serif; padding: 20px; }
         nav { background: #333; padding: 15px; color: white; display: flex; justify-content: space-between; margin-bottom: 20px; }
-        nav a { color: white; margin-left: 15px; text-decoration: none; font-weight: bold; cursor: pointer; }
+        nav a { color: white; margin-right: 15px; text-decoration: none; font-weight: bold; cursor: pointer; }
         .table-container { margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -16,10 +16,16 @@
 </head>
 <body>
     <nav>
+        <div>
+        Olá, <span id="nomeUsuario">Visitante</span>
+    </div>
     <div style="display: inline-block;">
-        <a href="index.html">Produtos</a>
+        <a href="index.html" style="text-decoration: underline;">Produtos</a>
         <a href="estoque.html">Nova Movimentação</a>
         <a href="historico.html">Histórico</a>
+        <button onclick="logout()" style="padding: 5px 10px; cursor: pointer;">
+        Sair 🚪
+    </button>
     </div>
     </nav>
 
@@ -44,6 +50,33 @@
 
         <button onclick="salvarProduto()" style="margin-top: 10px;">Salvar Produto</button>
     </div>
+
+    <hr> <div id="formEdicao" class="form-group" style="display: none; background-color: #f0f8ff; padding: 15px; border-radius: 5px;">
+    <h3>Editar Ferramenta / Equipamento</h3>
+    
+    <input type="hidden" id="editId">
+
+    <input type="text" id="editNome" placeholder="Nome">
+    
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="editTipo" placeholder="Tipo (Ex: Chave, Martelo)">
+        <input type="text" id="editCabo" placeholder="Material Cabo">
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="editTam" placeholder="Tamanho (Ex: 16 oz, 10mm)">
+        <input type="text" id="editTensao" placeholder="Tensão (Ex: 220v ou N/A)">
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <input type="number" id="editPreco" placeholder="Preço (R$)">
+        <input type="number" id="editQtd" placeholder="Quantidade Atual">
+    </div>
+
+    <button onclick="salvarEdicao()" style="margin-top: 10px; background-color: #28a745;">Salvar Edição</button>
+    <button onclick="document.getElementById('formEdicao').style.display='none';" style="margin-top: 10px; background-color: #dc3545;">Cancelar</button>
+</div>
+
+<hr>
 
     <input type="text" id="busca" placeholder="Buscar produto..." onkeyup="carregarProdutos()">
 
@@ -70,15 +103,22 @@
         if (!user) window.location.href = 'login.html';
         document.getElementById('nomeUsuario').innerText = user.nome;
 
+        // NOVO CÓDIGO DE CHECAGEM
+    const nomeUsuarioElement = document.getElementById('nomeUsuario');
+
+    if (nomeUsuarioElement) {
+        // Esta é a linha que estava dando erro, mas agora só executa se o elemento existir
+        nomeUsuarioElement.innerText = user.nome; 
+    }
+
         function logout() {
             localStorage.removeItem('usuario');
             window.location.href = 'login.html';
         }
 
         async function carregarProdutos() {
-            const termo = document.getElementById('busca').value.trim(); // Pega o termo e remove espaços
+            const termo = document.getElementById('busca').value.trim();
             
-            // CONSTRÓI A URL: Só adiciona a busca se o termo não estiver vazio
             const url = termo ? `${API}/produtos?busca=${termo}` : `${API}/produtos`;
             
             const res = await fetch(url);
@@ -86,11 +126,31 @@
             const tbody = document.getElementById('tabelaProdutos');
             tbody.innerHTML = '';
             
-            // ... (restante da função para popular a tabela) ...
-            
-            // Continua a popular a tabela com os produtos
+            if (produtos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">Nenhum produto cadastrado ou encontrado.</td></tr>';
+                return;
+            }
+
             produtos.forEach(p => {
-                // ... (código de preenchimento da linha) ...
+                // CORRIGIDO: Garantindo que o HTML está sintaticamente correto,
+                // incluindo todos os campos novos (tipo, material_cabo, etc.).
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>
+                            <strong>${p.nome}</strong><br>
+                            <small>Tipo: ${p.tipo} | Cabo: ${p.material_cabo}</small><br>
+                            <small>Tam: ${p.tamanho || 'N/A'} | Volts: ${p.tensao || 'N/A'}</small>
+                        </td>
+                        <td>R$ ${p.preco}</td>
+                        <td>${p.quantidade}</td>
+                        <td>
+                            <button onclick="carregarParaEdicao(${p.id})" style="margin-right: 5px;">Editar ✏️</button> 
+                            <button onclick="deletar(${p.id})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
             });
         }
         
@@ -125,7 +185,72 @@
                 carregarProdutos();
             }
         }
+        
+        // 1. CARREGA OS DADOS DO PRODUTO NO FORMULÁRIO DE EDIÇÃO
+// 1. CARREGA OS DADOS DO PRODUTO NO FORMULÁRIO DE EDIÇÃO
+async function carregarParaEdicao(id) {
+    // Note que a rota agora está corrigida para buscar o ID: /produtos?busca=ID
+    const res = await fetch(`${API}/produtos?busca=${id}`); 
+    const produtos = await res.json();
+    
+    // AQUI ESTAVA O ERRO DE LÓGICA: Se o array vier vazio, o produto não foi encontrado.
+    if (produtos.length === 0) {
+        alert("Produto não encontrado para edição.");
+        return;
+    }
+    
+    // PEGA O PRIMEIRO ITEM DO ARRAY DE PRODUTOS
+    const p = produtos[0]; 
 
+    // Preenche o formulário
+    document.getElementById('editId').value = p.id;
+    document.getElementById('editNome').value = p.nome;
+    document.getElementById('editTipo').value = p.tipo;
+    document.getElementById('editCabo').value = p.material_cabo;
+    document.getElementById('editTam').value = p.tamanho;
+    document.getElementById('editTensao').value = p.tensao;
+    document.getElementById('editPreco').value = p.preco;
+    document.getElementById('editQtd').value = p.quantidade;
+
+    // Exibe o formulário de edição
+    document.getElementById('formEdicao').style.display = 'block';
+    
+    // Rola a tela para o formulário
+    document.getElementById('formEdicao').scrollIntoView({ behavior: 'smooth' });
+}
+
+// 2. ENVIA OS DADOS ATUALIZADOS PARA O BACKEND
+async function salvarEdicao() {
+    // Captura os dados do formulário de edição
+    const id = document.getElementById('editId').value;
+    const nome = document.getElementById('editNome').value;
+    const tipo = document.getElementById('editTipo').value;
+    const material_cabo = document.getElementById('editCabo').value;
+    const tamanho = document.getElementById('editTam').value;
+    const tensao = document.getElementById('editTensao').value;
+    const preco = document.getElementById('editPreco').value;
+    const quantidade = document.getElementById('editQtd').value;
+    
+    if (!nome || !preco) return alert("Preencha pelo menos Nome e Preço!");
+
+    const res = await fetch(`${API}/produtos`, {
+        method: 'PUT', // MÉTODO PUT
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            id, nome, tipo, material_cabo, tamanho, tensao, preco, quantidade
+        })
+    });
+    
+    if (!res.ok) {
+        const erro = await res.json();
+        alert(`Erro ao salvar edição: ${erro.mensagem || res.statusText}`);
+        return;
+    }
+
+    alert("Produto atualizado com sucesso!");
+    document.getElementById('formEdicao').style.display = 'none'; // Esconde o formulário
+    carregarProdutos(); // Recarrega a lista para mostrar a mudança
+}
         carregarProdutos();
     </script>
 </body>

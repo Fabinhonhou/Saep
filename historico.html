@@ -23,6 +23,9 @@
         <a href="index.html">Produtos</a>
         <a href="estoque.html">Nova Movimentação</a>
         <a href="historico.html" style="text-decoration: underline;">Histórico</a>
+        <button onclick="logout()" style="padding: 5px 10px; cursor: pointer;">
+        Sair 🚪
+    </button>
     </nav>
 
     <h2>Histórico de Movimentações</h2>
@@ -44,6 +47,8 @@
         const API = 'http://localhost:3000';
 
         async function carregarHistorico() {
+            const API = 'http://localhost:3000'; // É bom ter a API declarada aqui também
+            
             const res = await fetch(`${API}/movimentacoes`);
             const lista = await res.json();
             const tbody = document.getElementById('tabelaHistorico');
@@ -56,15 +61,19 @@
             }
 
             lista.forEach(mov => {
-                // Formata a data para ficar bonita (ex: 18/11/2024 14:30)
-                // FORÇA a leitura como data UTC para evitar problemas de fuso horário local
-                const dataObj = new Date(mov.data);
-                const dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' ' + dataObj.toLocaleTimeString('pt-BR');
-                
-                // Define a classe CSS baseada no tipo
+                // A data salva no banco está no formato AAAA-MM-DD com hora UTC (12:00:00Z).
+                // 1. Cria o objeto Date
+                const dataObj = new Date(mov.data); 
+
+                // 2. Formata para mostrar APENAS o dia (DD/MM/AAAA)
+                // Usamos toLocaleDateString para ignorar o horário (que não é relevante aqui)
+                const dataFormatada = dataObj.toLocaleDateString('pt-BR'); 
+
+                // 3. Define classes e textos
                 const classeTipo = mov.tipo === 'entrada' ? 'entrada' : 'saida';
                 const textoTipo = mov.tipo === 'entrada' ? 'ENTRADA (+)' : 'SAÍDA (-)';
 
+                // 4. Insere a linha na tabela
                 tbody.innerHTML += `
                     <tr>
                         <td>${dataFormatada}</td>
@@ -75,7 +84,19 @@
                 `;
             });
         }
+        // Adicione esta função dentro do seu bloco <script>
 
+function logout() {
+    // 1. Limpa o token/usuário salvo
+    localStorage.removeItem('usuario');
+    
+    // 2. Redireciona para a página de login
+    window.location.href = 'login.html';
+}
+
+// ... (O restante do seu script, como carregarProdutos(), etc.) ...
+
+        // Garanta que esta linha existe!
         carregarHistorico();
     </script>
 </body>
